@@ -1,0 +1,11 @@
+streamlit
+pandas
+matplotlib
+plotly
+seaborn
+gym
+scikit-learn
+xgboost
+numpy
+stable-baselines3
+openpyxl
