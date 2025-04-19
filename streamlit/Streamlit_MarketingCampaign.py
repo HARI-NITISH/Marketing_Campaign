@@ -514,6 +514,56 @@ if df is not None:
             st.subheader(model_option)
 
             if model_option == "REINFORCE":
+            model_code = """
+            states = df[['Campaign', 'Channel', 'Device']].drop_duplicates().reset_index(drop=True)
+                state_space = {tuple(row): index for index, row in states.iterrows()}
+                action_space = {
+                    0: 'Change Channel to Instagram',
+                    1: 'Change Channel to Facebook',
+                    2: 'Change Channel to Pinterest',
+                    3: 'Change Device to Mobile',
+                    4: 'Change Device to Desktop'
+                }
+
+                # Initialize the policy table with uniform probabilities
+                policy_table = np.ones((len(state_space), len(action_space))) / len(action_space)
+
+                def choose_action(state_index):
+                    return np.random.choice(len(action_space), p=policy_table[state_index])
+
+                def simulate_episode(policy_table, data, state_space, batch_size=100):
+                    sampled_data = data.sample(batch_size)
+                    episode = []
+                    for index, row in sampled_data.iterrows():
+                        state = (row['Campaign'], row['Channel'], row['Device'])
+                        state_index = state_space[state]
+                        action = choose_action(state_index)
+                        reward = row['Conversions']  
+                        episode.append((state_index, action, reward))
+                    return episode
+
+                # Update the policy using REINFORCE
+                def update_policy(policy_table, episode, gamma=0.99, alpha=0.01):
+                    G = 0
+                    for state_index, action, reward in reversed(episode):
+                        G = reward + gamma * G
+                        policy_table[state_index, action] += alpha * G * (1 - policy_table[state_index, action])
+                        policy_table[state_index, :] = policy_table[state_index, :] / policy_table[state_index, :].sum()
+                    return policy_table
+
+                num_episodes = 1000
+                batch_size = 1000
+                for episode in range(num_episodes):
+                    simulated_episode = simulate_episode(policy_table, df, state_space, batch_size)
+                    policy_table = update_policy(policy_table, simulated_episode)
+
+                # Evaluating the policy
+                final_policy = pd.DataFrame(policy_table, columns=action_space.values(), index=states.apply(tuple, axis=1))
+                final_policy
+            
+            """
+
+            st.code(model_code, language="python")
      
        
                 states = df[['Campaign', 'Channel', 'Device']].drop_duplicates().reset_index(drop=True)
@@ -566,6 +616,85 @@ if df is not None:
             if model_option == "PPO":
                 
                 st.subheader("PPO Model Inference")
+                model_code=""" 
+                import gym
+                from gym import spaces
+
+                class MarketingEnv(gym.Env):
+                    def __init__(self, data, original_data, reg_model):
+                        super(MarketingEnv, self).__init__()
+                        self.data = data.reset_index(drop=True)
+                        self.original_data = original_data.reset_index(drop=True)
+                        self.current_step = 0
+                        self.reg_model = reg_model
+                        self.action_space = spaces.Discrete(5)
+                        self.observation_space = spaces.Box(low=0, high=1, shape=(len(data.columns),), dtype=np.float32)
+
+                    def reset(self):
+                        self.current_step = 0
+                        return self.data.loc[self.current_step].values
+
+                    def cal_impressions(self):
+                        columns = ['Campaign', 'Channel', 'Device', 'Spend, GBP', 'Daily Average CPC']
+                        selected_data = self.original_data.loc[self.current_step, columns]
+                        self.original_data.at[self.current_step, 'Impressions'] = self.reg_model.predict([selected_data])[0]
+
+                    def step(self, action):
+                        self._take_action(action)
+                        self.current_step += 1
+                        done = self.current_step >= len(self.data)
+                        reward = self._calculate_reward(action)
+                        if not done:
+                            state = self.data.loc[self.current_step].values
+                        else:
+                            state = np.zeros(self.observation_space.shape)
+                        return state, reward, done, {}
+
+                    def _take_action(self, action):
+                        if action == 0:
+                            self.original_data.at[self.current_step, 'Channel'] = 0  # Encoded label for Facebook
+                        elif action == 1:
+                            self.original_data.at[self.current_step, 'Channel'] = 1  # Encoded label for Instagram
+                        elif action == 2:
+                            self.original_data.at[self.current_step, 'Channel'] = 2  # Encoded label for Pinterest
+                        elif action == 3:  # Increase budget allocation
+                            self.original_data.at[self.current_step, 'Spend, GBP'] *= 1.1
+                        elif action == 4:  # Decrease budget allocation
+                            self.original_data.at[self.current_step, 'Spend, GBP'] *= 0.9
+                        self.cal_impressions()
+
+                    def _calculate_reward(self, action):
+                        if self.current_step >= len(self.original_data):
+                            return 0
+                        return self.original_data.iloc[self.current_step]['Impressions']
+
+                from stable_baselines3.common.vec_env import DummyVecEnv
+                from stable_baselines3 import PPO
+
+                # Create the environment
+                env = DummyVecEnv([lambda: MarketingEnv(train_data, train_original_data, reg_model)])
+
+                # Train the RL model
+                model = PPO('MlpPolicy', env, verbose=1)
+                model.learn(total_timesteps=1000)
+
+                # Save the model
+                model.save("ppo_marketing")
+                st.write("Model saved as 'ppo_marketing'.")
+
+                # Load and test the model
+                model = PPO.load("ppo_marketing")
+                obs = env.reset()
+                for i in range(len(train_data) - 1):
+                    action, _states = model.predict(obs)
+                    obs, rewards, dones, info = env.step(action)
+                    st.write(f"Step {i + 1}")
+                    st.write(f"Action: {action}")
+                    st.write(f"Reward: {rewards}")
+                    st.write(f"State: {obs}")
+                    if dones:
+                        break
+                        """
                 data = data.drop(['Latitude', 'Longitude'], axis=1)
                 obj_col = data.select_dtypes(include=['object']).columns.tolist()
                 le = LabelEncoder()
