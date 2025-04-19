@@ -514,56 +514,57 @@ if df is not None:
             st.subheader(model_option)
 
             if model_option == "REINFORCE":
-            model_code = """
-            states = df[['Campaign', 'Channel', 'Device']].drop_duplicates().reset_index(drop=True)
-                state_space = {tuple(row): index for index, row in states.iterrows()}
-                action_space = {
-                    0: 'Change Channel to Instagram',
-                    1: 'Change Channel to Facebook',
-                    2: 'Change Channel to Pinterest',
-                    3: 'Change Device to Mobile',
-                    4: 'Change Device to Desktop'
-                }
-
-                # Initialize the policy table with uniform probabilities
-                policy_table = np.ones((len(state_space), len(action_space))) / len(action_space)
-
-                def choose_action(state_index):
-                    return np.random.choice(len(action_space), p=policy_table[state_index])
-
-                def simulate_episode(policy_table, data, state_space, batch_size=100):
-                    sampled_data = data.sample(batch_size)
-                    episode = []
-                    for index, row in sampled_data.iterrows():
-                        state = (row['Campaign'], row['Channel'], row['Device'])
-                        state_index = state_space[state]
-                        action = choose_action(state_index)
-                        reward = row['Conversions']  
-                        episode.append((state_index, action, reward))
-                    return episode
-
-                # Update the policy using REINFORCE
-                def update_policy(policy_table, episode, gamma=0.99, alpha=0.01):
-                    G = 0
-                    for state_index, action, reward in reversed(episode):
-                        G = reward + gamma * G
-                        policy_table[state_index, action] += alpha * G * (1 - policy_table[state_index, action])
-                        policy_table[state_index, :] = policy_table[state_index, :] / policy_table[state_index, :].sum()
-                    return policy_table
-
-                num_episodes = 1000
-                batch_size = 1000
-                for episode in range(num_episodes):
-                    simulated_episode = simulate_episode(policy_table, df, state_space, batch_size)
-                    policy_table = update_policy(policy_table, simulated_episode)
-
-                # Evaluating the policy
-                final_policy = pd.DataFrame(policy_table, columns=action_space.values(), index=states.apply(tuple, axis=1))
-                final_policy
-            
-            """
-
-            st.code(model_code, language="python")
+                
+                model_code = """
+                states = df[['Campaign', 'Channel', 'Device']].drop_duplicates().reset_index(drop=True)
+                    state_space = {tuple(row): index for index, row in states.iterrows()}
+                    action_space = {
+                        0: 'Change Channel to Instagram',
+                        1: 'Change Channel to Facebook',
+                        2: 'Change Channel to Pinterest',
+                        3: 'Change Device to Mobile',
+                        4: 'Change Device to Desktop'
+                    }
+    
+                    # Initialize the policy table with uniform probabilities
+                    policy_table = np.ones((len(state_space), len(action_space))) / len(action_space)
+    
+                    def choose_action(state_index):
+                        return np.random.choice(len(action_space), p=policy_table[state_index])
+    
+                    def simulate_episode(policy_table, data, state_space, batch_size=100):
+                        sampled_data = data.sample(batch_size)
+                        episode = []
+                        for index, row in sampled_data.iterrows():
+                            state = (row['Campaign'], row['Channel'], row['Device'])
+                            state_index = state_space[state]
+                            action = choose_action(state_index)
+                            reward = row['Conversions']  
+                            episode.append((state_index, action, reward))
+                        return episode
+    
+                    # Update the policy using REINFORCE
+                    def update_policy(policy_table, episode, gamma=0.99, alpha=0.01):
+                        G = 0
+                        for state_index, action, reward in reversed(episode):
+                            G = reward + gamma * G
+                            policy_table[state_index, action] += alpha * G * (1 - policy_table[state_index, action])
+                            policy_table[state_index, :] = policy_table[state_index, :] / policy_table[state_index, :].sum()
+                        return policy_table
+    
+                    num_episodes = 1000
+                    batch_size = 1000
+                    for episode in range(num_episodes):
+                        simulated_episode = simulate_episode(policy_table, df, state_space, batch_size)
+                        policy_table = update_policy(policy_table, simulated_episode)
+    
+                    # Evaluating the policy
+                    final_policy = pd.DataFrame(policy_table, columns=action_space.values(), index=states.apply(tuple, axis=1))
+                    final_policy
+                
+                """
+    
+                st.code(model_code, language="python")
      
        
                 states = df[['Campaign', 'Channel', 'Device']].drop_duplicates().reset_index(drop=True)
