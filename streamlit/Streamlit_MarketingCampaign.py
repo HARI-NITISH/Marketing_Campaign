@@ -695,6 +695,8 @@ if df is not None:
                     if dones:
                         break
                         """
+                st.code(model_code, language="python")
+
                 data = data.drop(['Latitude', 'Longitude'], axis=1)
                 obj_col = data.select_dtypes(include=['object']).columns.tolist()
                 le = LabelEncoder()
