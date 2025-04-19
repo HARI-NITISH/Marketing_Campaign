@@ -28,7 +28,7 @@ analysis_options = [
 selected_option = st.sidebar.radio("Select Analysis", analysis_options)
 # Load the dataset
 try:
-    df = pd.read_excel("D:\Marketing_campaign\data\Marketing Campaign Dataset.xlsx")
+    df = pd.read_excel("data/Marketing Campaign Dataset.xlsx")
     df1= df.copy()
     data=df.copy()
     original_data = df.copy()
