@@ -232,7 +232,7 @@ if df is not None:
 
 
     if selected_option == "ML Models":
-        st.header("Feature Engineering")
+        st.header("Machine Learning Models")
         
         df['High_Profitability'] = (df['Conversions'] / df['Spend, GBP'] > 1).astype(int)
 
